@@ -8,6 +8,10 @@
 #include "Robot.h"
 
 #include <iostream>
+#include <frc/Timer.h>
+#include <frc/Joystick.h>
+#include <frc/DoubleSolenoid.h>
+#include <frc/Compressor.h>
 
 #include <frc/smartdashboard/SmartDashboard.h>
 
