@@ -11,10 +11,21 @@
 
 #include <frc/smartdashboard/SmartDashboard.h>
 
+using namespace frc;
+
+Timer timer;
+Joystick stick{0};
+Compressor compressor{0};
+DoubleSolenoid lift1{0, 1}, lift2{2, 3};
+
 void Robot::RobotInit() {
   m_chooser.SetDefaultOption(kAutoNameDefault, kAutoNameDefault);
   m_chooser.AddOption(kAutoNameCustom, kAutoNameCustom);
   frc::SmartDashboard::PutData("Auto Modes", &m_chooser);
+  compressor.SetClosedLoopControl(false);
+  compressor.Start();
+  timer.Reset();
+  timer.Start();
 }
 
 /**
@@ -61,7 +72,20 @@ void Robot::AutonomousPeriodic() {
 
 void Robot::TeleopInit() {}
 
-void Robot::TeleopPeriodic() {}
+void Robot::TeleopPeriodic() {
+  if (stick.GetRawButton(1)) {
+    lift1.Set(DoubleSolenoid::Value::kForward);
+    lift2.Set(DoubleSolenoid::Value::kForward);
+  }
+  else if (stick.GetRawButton(2)) {
+    lift1.Set(DoubleSolenoid::Value::kReverse);
+    lift2.Set(DoubleSolenoid::Value::kReverse);
+  }
+  else {
+    lift1.Set(DoubleSolenoid::Value::kOff);
+    lift2.Set(DoubleSolenoid::Value::kOff);
+  }
+}
 
 void Robot::TestPeriodic() {}
 
