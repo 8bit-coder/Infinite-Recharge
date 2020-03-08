@@ -8,60 +8,199 @@
 #include "Robot.h"
 
 #include <iostream>
+#include <memory>
+#include <string>
 
+#include <frc/IterativeRobot.h>
+#include <frc/Joystick.h>
+#include <frc/Timer.h>
+#include <frc/Spark.h>
+#include <frc/Talon.h>
+#include <frc/Encoder.h>
+#include <frc/WPILib.h>
+#include <frc/PowerDistributionPanel.h>
+#include <cameraServer/CameraServer.h>
 #include <frc/smartdashboard/SmartDashboard.h>
+#include <frc/SmartDashboard/SendableChooser.h>
+#include <frc/Servo.h>
+#include <ctre/phoenix/sensors/PigeonIMU.h>
+
+#include "rev/SparkMax.h"
+#include <frc/Compressor.h>
+#include <frc/Talon.h>
+#include <frc/Solenoid.h>
+#include <frc/DoubleSolenoid.h>
+#include <math.h>
+
+
+frc::Joystick one{0}, two{1};
+frc::Talon frontLeft{2}, frontRight{1}, backLeft{3}, backRight{0}, panel{10}, panel{10};
+rev::SparkMax intake{4}, outtake{5};
+frc::Servo pan{6},tilt{7};
+frc::RobotDrive myRobot{frontLeft, backLeft, frontRight, backRight};
+frc::Timer timer, shootTimer;
+
+frc::Solenoid ballStorage{6}, ballUnstuck{0};
+frc::DoubleSolenoid ballIn{2, 3};
+frc::Compressor compressor{0};
+
+ctre::phoenix::sensors::PigeonIMU pigeon{10};
+
+double speed, turn, sensitivity, turnKey;
+bool isUpPressed, isDownPressed;
+double sP,tN;
+int16_t accel[3];
+
+double trueMap(double val, double valHigh, double valLow, double newHigh, double newLow)
+{
+	double midVal = ((valHigh - valLow) / 2) + valLow;
+	double newMidVal = ((newHigh - newLow) / 2) + newLow;
+	double ratio = (newHigh - newLow) / (valHigh - valLow);
+	return (((val - midVal) * ratio) + newMidVal);
+}
+
+void calibratePigeon() {
+  pigeon.SetAccumZAngle(0);
+  pigeon.SetCompassAngle(0);
+  pigeon.SetCompassDeclination(0);
+  pigeon.SetFusedHeading(0);
+  pigeon.SetFusedHeadingToCompass(0);
+  pigeon.SetYaw(0);
+  pigeon.SetYawToCompass(0);
+  pigeon.EnterCalibrationMode(ctre::phoenix::sensors::PigeonIMU::CalibrationMode::Accelerometer);
+}
 
 void Robot::RobotInit() {
   m_chooser.SetDefaultOption(kAutoNameDefault, kAutoNameDefault);
   m_chooser.AddOption(kAutoNameCustom, kAutoNameCustom);
   frc::SmartDashboard::PutData("Auto Modes", &m_chooser);
+  frc::SmartDashboard::PutNumber("Timer", timer.Get());
+  compressor.SetClosedLoopControl(false);
+  compressor.Start();
+  timer.Reset();
+  timer.Start();
+  calibratePigeon();
 }
 
-/**
- * This function is called every robot packet, no matter the mode. Use
- * this for items like diagnostics that you want ran during disabled,
- * autonomous, teleoperated and test.
- *
- * <p> This runs after the mode specific periodic functions, but before
- * LiveWindow and SmartDashboard integrated updating.
- */
 void Robot::RobotPeriodic() {}
 
-/**
- * This autonomous (along with the chooser code above) shows how to select
- * between different autonomous modes using the dashboard. The sendable chooser
- * code works with the Java SmartDashboard. If you prefer the LabVIEW Dashboard,
- * remove all of the chooser code and uncomment the GetString line to get the
- * auto name from the text box below the Gyro.
- *
- * You can add additional auto modes by adding additional comparisons to the
- * if-else structure below with additional strings. If using the SendableChooser
- * make sure to add them to the chooser code above as well.
- */
 void Robot::AutonomousInit() {
-  m_autoSelected = m_chooser.GetSelected();
-  // m_autoSelected = SmartDashboard::GetString("Auto Selector",
-  //     kAutoNameDefault);
-  std::cout << "Auto selected: " << m_autoSelected << std::endl;
-
-  if (m_autoSelected == kAutoNameCustom) {
-    // Custom Auto goes here
-  } else {
-    // Default Auto goes here
-  }
+  timer.Reset();
+  timer.Start();
+  shootTimer.Reset();
+  outtake.Set(1.0);
+  ballStorage.Set(false);
+  calibratePigeon();
 }
 
 void Robot::AutonomousPeriodic() {
-  if (m_autoSelected == kAutoNameCustom) {
-    // Custom Auto goes here
-  } else {
-    // Default Auto goes here
+  turn = -trueMap(pigeon.GetCompassHeading(), 90, -90, 1.0, -1.0); //set the robot to turn against the strafe
+  if (timer.Get() < 0.2) {
+    myRobot.ArcadeDrive(timer.Get() * 5, turn);
+  }
+  else if (timer.Get() < 4) {
+    ballStorage.Set(true);
+    myRobot.ArcadeDrive(1.0, turn);
+  }
+  else if (timer.Get() < 5) {
+    myRobot.ArcadeDrive(0.5, 0.5 + turn);
+  }
+  else if (timer.Get() < 6) {
+    myRobot.ArcadeDrive(0.5, turn - 0.5);
+  }
+  else if (timer.Get() < 8) {
+    myRobot.ArcadeDrive(0.8, turn);
+    pigeon.GetBiasedAccelerometer(accel);
+    if (accel[0] == 0 && accel[1] == 0) {
+      myRobot.ArcadeDrive(0.0, 0.0);
+    }
+  }
+  else if (timer.Get() < 9.5) {
+    myRobot.ArcadeDrive(0.0, turn);
+    shootTimer.Start();
+    outtake.Set(-1);
+    if (shootTimer.Get() < 0.2) {
+      ballStorage.Set(false);
+    }
+  }
+  else if (timer.Get() < 11) {
+    outtake.Set(0);
+    ballStorage.Set(true);
+    myRobot.ArcadeDrive(-0.8, turn);
+  }
+  else {
+    myRobot.ArcadeDrive(0.0, 0.0);
   }
 }
 
-void Robot::TeleopInit() {}
+void Robot::TeleopInit() {
+  timer.Reset();
+  timer.Start();
+  shootTimer.Reset();
+  turn = 0;
+  speed = 0;
+  sensitivity = -two.GetRawAxis(1);
+  ballIn.Set(frc::DoubleSolenoid::Value::kOff);//piston1 no go nyoo
+}
 
-void Robot::TeleopPeriodic() {}
+void Robot::TeleopPeriodic() {
+  if (two.GetRawButton(1)) {
+    intake.Set(0.4);
+  }
+  else if (two.GetRawButton(2)) {
+    intake.Set(-1);
+  }
+  else {
+    intake.Set(0);
+  }
+
+  if (one.GetRawButton(2)) {
+    ballUnstuck.Set(true);
+  }
+  else {
+    ballUnstuck.Set(false);
+  }
+
+  double outtakeSpeed = -1.0;
+
+  if(one.GetRawButton(1)) {
+    shootTimer.Start();
+    outtake.Set(outtakeSpeed);
+    if (shootTimer.Get() > .75) {
+      ballStorage.Set(false);
+    }
+  }
+  else if (one.GetRawButton(3)) {
+    outtake.Set(-outtakeSpeed);
+    ballStorage.Set(false);
+  }
+  else if (!one.GetRawButton(1)&&!one.GetRawButton(3)){
+   outtake.Set(0);
+   ballStorage.Set(true);
+   shootTimer.Reset();
+  }
+
+  if (two.GetRawButton(5)) {
+    ballIn.Set(frc::DoubleSolenoid::Value::kForward);//piston1 go 
+  }
+  else if (!two.GetRawButton(5)&&two.GetRawButton(4)) {
+    ballIn.Set(frc::DoubleSolenoid::Value::kReverse);//piston1 go shwoop
+  }
+  else if (!two.GetRawButton(5)&&!two.GetRawButton(4)) {
+    ballIn.Set(frc::DoubleSolenoid::Value::kOff);//piston1 stop
+  }
+
+  sensitivity = (0.5);
+
+  speed = one.GetRawAxis(1) * sensitivity;
+  turn = one.GetRawAxis(0) * sensitivity;
+  
+  myRobot.ArcadeDrive(speed, turn);
+
+  pan.Set(trueMap(two.GetRawAxis(0),1,-1,1,0));
+  tilt.Set(trueMap(two.GetRawAxis(1),-1,1,1,0));
+
+}
 
 void Robot::TestPeriodic() {}
 
