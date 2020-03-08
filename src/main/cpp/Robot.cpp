@@ -8,8 +8,10 @@
 #include "Robot.h"
 
 #include <iostream>
-#include <memory>
-#include <string>
+#include <frc/Timer.h>
+#include <frc/Joystick.h>
+#include <frc/DoubleSolenoid.h>
+#include <frc/Compressor.h>
 
 #include <frc/IterativeRobot.h>
 #include <frc/Joystick.h>
@@ -69,6 +71,13 @@ void calibratePigeon() {
   pigeon.SetYawToCompass(0);
   pigeon.EnterCalibrationMode(ctre::phoenix::sensors::PigeonIMU::CalibrationMode::Accelerometer);
 }
+
+using namespace frc;
+
+Timer timer;
+Joystick stick{0};
+Compressor compressor{0};
+DoubleSolenoid lift1{0, 1}, lift2{2, 3};
 
 void Robot::RobotInit() {
   m_chooser.SetDefaultOption(kAutoNameDefault, kAutoNameDefault);
@@ -140,7 +149,7 @@ void Robot::TeleopInit() {
   turn = 0;
   speed = 0;
   sensitivity = -two.GetRawAxis(1);
-  ballIn.Set(frc::DoubleSolenoid::Value::kOff);//piston1 no go nyoo
+  ballIn.Set(frc::DoubleSolenoid::Value::kOff);//piston no go nyoo
 }
 
 void Robot::TeleopPeriodic() {
@@ -181,13 +190,13 @@ void Robot::TeleopPeriodic() {
   }
 
   if (two.GetRawButton(5)) {
-    ballIn.Set(frc::DoubleSolenoid::Value::kForward);//piston1 go 
+    ballIn.Set(frc::DoubleSolenoid::Value::kForward);//piston go 
   }
   else if (!two.GetRawButton(5)&&two.GetRawButton(4)) {
-    ballIn.Set(frc::DoubleSolenoid::Value::kReverse);//piston1 go shwoop
+    ballIn.Set(frc::DoubleSolenoid::Value::kReverse);//piston go shwoop
   }
   else if (!two.GetRawButton(5)&&!two.GetRawButton(4)) {
-    ballIn.Set(frc::DoubleSolenoid::Value::kOff);//piston1 stop
+    ballIn.Set(frc::DoubleSolenoid::Value::kOff);//piston stop
   }
 
   sensitivity = (0.5);
