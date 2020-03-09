@@ -68,7 +68,6 @@ void calibratePigeon() {
   pigeon.SetFusedHeadingToCompass(0);
   pigeon.SetYaw(0);
   pigeon.SetYawToCompass(0);
-  pigeon.EnterCalibrationMode(ctre::phoenix::sensors::PigeonIMU::CalibrationMode::Accelerometer);
 }
 
 using namespace frc;
@@ -144,6 +143,7 @@ void Robot::TeleopInit() {
   speed = 0;
   sensitivity = -two.GetRawAxis(1);
   ballIn.Set(frc::DoubleSolenoid::Value::kOff);//piston no go nyoo
+  calibratePigeon();
 }
 
 void Robot::TeleopPeriodic() {
