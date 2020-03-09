@@ -27,7 +27,7 @@
 #include <frc/Servo.h>
 #include <ctre/phoenix/sensors/PigeonIMU.h>
 
-#include "rev/SparkMax.h"
+#include <rev/SparkMax.h>
 #include <frc/Compressor.h>
 #include <frc/Talon.h>
 #include <frc/Solenoid.h>
