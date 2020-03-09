@@ -29,7 +29,6 @@
 
 #include <rev/SparkMax.h>
 #include <frc/Compressor.h>
-#include <frc/Talon.h>
 #include <frc/Solenoid.h>
 #include <frc/DoubleSolenoid.h>
 #include <math.h>
@@ -51,6 +50,7 @@ double speed, turn, sensitivity, turnKey;
 bool isUpPressed, isDownPressed;
 double sP,tN;
 int16_t accel[3];
+double quat[4];
 
 double trueMap(double val, double valHigh, double valLow, double newHigh, double newLow)
 {
@@ -97,41 +97,48 @@ void Robot::AutonomousInit() {
 
 void Robot::AutonomousPeriodic() {
   turn = -trueMap(pigeon.GetCompassHeading(), 90, -90, 1.0, -1.0); //set the robot to turn against the strafe
-  if (timer.Get() < 0.2) {
-    myRobot.ArcadeDrive(timer.Get() * 5, turn);
-  }
-  else if (timer.Get() < 4) {
-    ballStorage.Set(true);
-    myRobot.ArcadeDrive(1.0, turn);
-  }
-  else if (timer.Get() < 5) {
-    myRobot.ArcadeDrive(0.5, 0.5 + turn);
-  }
-  else if (timer.Get() < 6) {
-    myRobot.ArcadeDrive(0.5, turn - 0.5);
-  }
-  else if (timer.Get() < 8) {
-    myRobot.ArcadeDrive(0.8, turn);
-    pigeon.GetBiasedAccelerometer(accel);
-    if (accel[0] == 0 && accel[1] == 0) {
+  if (m_chooser.GetSelected() == kAutoNameCustom) { //timed auto
+    if (timer.Get() < 0.2) {
+      myRobot.ArcadeDrive(timer.Get() * 5, turn);
+    }
+    else if (timer.Get() < 4) {
+      ballStorage.Set(true);
+      myRobot.ArcadeDrive(1.0, turn);
+    }
+    else if (timer.Get() < 5) {
+      myRobot.ArcadeDrive(0.5, 0.5 + turn);
+    }
+    else if (timer.Get() < 6) {
+      myRobot.ArcadeDrive(0.5, turn - 0.5);
+    }
+    else if (timer.Get() < 8) {
+      myRobot.ArcadeDrive(0.8, turn);
+      pigeon.GetBiasedAccelerometer(accel);
+      if (accel[0] == 0 && accel[1] == 0) {
+        myRobot.ArcadeDrive(0.0, 0.0);
+      }
+    }
+    else if (timer.Get() < 9.5) {
+      myRobot.ArcadeDrive(0.0, turn);
+      shootTimer.Start();
+      outtake.Set(-1);
+      if (shootTimer.Get() < 0.2) {
+        ballStorage.Set(false);
+      }
+    }
+    else if (timer.Get() < 11) {
+      outtake.Set(0);
+      ballStorage.Set(true);
+      myRobot.ArcadeDrive(-0.8, turn);
+    }
+    else {
       myRobot.ArcadeDrive(0.0, 0.0);
     }
   }
-  else if (timer.Get() < 9.5) {
-    myRobot.ArcadeDrive(0.0, turn);
-    shootTimer.Start();
-    outtake.Set(-1);
-    if (shootTimer.Get() < 0.2) {
-      ballStorage.Set(false);
+  else { //calibrated auto
+    if (timer.Get() < 1 && timer.Get() > 0.2) {
+      ballStorage.Set(true);
     }
-  }
-  else if (timer.Get() < 11) {
-    outtake.Set(0);
-    ballStorage.Set(true);
-    myRobot.ArcadeDrive(-0.8, turn);
-  }
-  else {
-    myRobot.ArcadeDrive(0.0, 0.0);
   }
 }
 
@@ -205,7 +212,12 @@ void Robot::TeleopPeriodic() {
 
 }
 
-void Robot::TestPeriodic() {}
+void Robot::TestPeriodic() {
+  pigeon.Get6dQuaternion(quat);
+  for (int i = 0; i < 4; i++) {
+    frc::SmartDashboard::PutNumber("Position", quat[i]);
+  }
+}
 
 #ifndef RUNNING_FRC_TESTS
 int main() { return frc::StartRobot<Robot>(); }
