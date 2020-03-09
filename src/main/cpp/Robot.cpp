@@ -26,6 +26,7 @@
 #include <frc/SmartDashboard/SendableChooser.h>
 #include <frc/Servo.h>
 #include <ctre/phoenix/sensors/PigeonIMU.h>
+#include <ctre/phoenix/music/Orchestra.h>
 
 #include <rev/SparkMax.h>
 #include <frc/Compressor.h>
@@ -34,9 +35,10 @@
 #include <frc/DoubleSolenoid.h>
 #include <math.h>
 
+frc::SendableChooser<std::__cxx11::string> Robot::s_chooser;
 
 frc::Joystick one{0}, two{1};
-frc::Talon frontLeft{2}, frontRight{1}, backLeft{3}, backRight{0}, panel{10}, panel{10};
+frc::Talon frontLeft{2}, frontRight{1}, backLeft{3}, backRight{0}, panel{10};
 rev::SparkMax intake{4}, outtake{5};
 frc::Servo pan{6},tilt{7};
 frc::RobotDrive myRobot{frontLeft, backLeft, frontRight, backRight};
@@ -47,6 +49,7 @@ frc::DoubleSolenoid ballIn{2, 3};
 frc::Compressor compressor{0};
 
 ctre::phoenix::sensors::PigeonIMU pigeon{10};
+ctre::phoenix::music::Orchestra choir;
 
 double speed, turn, sensitivity, turnKey;
 bool isUpPressed, isDownPressed;
@@ -82,16 +85,30 @@ DoubleSolenoid lift1{0, 1}, lift2{2, 3};
 void Robot::RobotInit() {
   m_chooser.SetDefaultOption(kAutoNameDefault, kAutoNameDefault);
   m_chooser.AddOption(kAutoNameCustom, kAutoNameCustom);
+  s_chooser.SetDefaultOption("Use the force, Luke", "Force.chrp");
+  s_chooser.AddOption("No need to thank me", "Thanks.chrp");
   frc::SmartDashboard::PutData("Auto Modes", &m_chooser);
   frc::SmartDashboard::PutNumber("Timer", timer.Get());
+  frc::SmartDashboard::PutData("Audio", &s_chooser);
   compressor.SetClosedLoopControl(false);
   compressor.Start();
   timer.Reset();
   timer.Start();
   calibratePigeon();
+  choir.AddInstrument(frontLeft);
+  choir.AddInstrument(frontRight);
 }
 
-void Robot::RobotPeriodic() {}
+void Robot::RobotPeriodic() {
+  std::string fileName = frc::SmartDashboard::GetData("Audio");
+  if (one.GetRawButtonReleased(1) || two.GetRawButtonReleased(1)) {
+    choir.Play();
+  }
+  else if (one.GetRawButtonPressed(3)) {
+    choir.LoadMusic(fileName);
+    choir.Play();
+  }
+}
 
 void Robot::AutonomousInit() {
   timer.Reset();
@@ -155,6 +172,7 @@ void Robot::TeleopInit() {
 void Robot::TeleopPeriodic() {
   if (two.GetRawButton(1)) {
     intake.Set(0.4);
+    choir.LoadMusic("Force.chrp");
   }
   else if (two.GetRawButton(2)) {
     intake.Set(-1);
@@ -174,6 +192,7 @@ void Robot::TeleopPeriodic() {
 
   if(one.GetRawButton(1)) {
     shootTimer.Start();
+    choir.LoadMusic("Thanks.chrp");
     outtake.Set(outtakeSpeed);
     if (shootTimer.Get() > .75) {
       ballStorage.Set(false);
