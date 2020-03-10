@@ -214,9 +214,8 @@ void Robot::TeleopPeriodic() {
 
 void Robot::TestPeriodic() {
   pigeon.Get6dQuaternion(quat);
-  for (int i = 0; i < 4; i++) {
-    frc::SmartDashboard::PutNumber("Position", quat[i]);
-  }
+  frc::SmartDashboard::PutNumber("Position", quat[0]);
+  frc::SmartDashboard::PutNumber("Position", quat[1]);
 }
 
 #ifndef RUNNING_FRC_TESTS
